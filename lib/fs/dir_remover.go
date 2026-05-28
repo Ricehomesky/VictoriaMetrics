@@ -212,7 +212,12 @@ func tryRemoveDir(dirPath string) bool {
 	MustSyncPath(dirPath)
 
 	// Remove the dirPath itself
-	MustRemovePath(dirPath)
+	if err := os.Remove(dirPath); err != nil {
+		if !isTemporaryNFSError(err) {
+			logger.Panicf("FATAL: cannot remove %q: %s", dirPath, err)
+		}
+		return false
+	}
 
 	// Do not sync the parent directory for the dirPath - the caller can do this if needed.
 	// It is OK if the dirPath will remain undeleted after unclean shutdown - it will be deleted
