@@ -203,7 +203,9 @@ func tryRemoveDir(dirPath string) bool {
 
 	deleteFilePath := filepath.Join(dirPath, deleteDirFilename)
 	// Remove the deleteDirFilename file, since there are no other entries left in the directory.
-	MustRemovePath(deleteFilePath)
+	if err := removePathWithRetry(deleteFilePath); err != nil {
+		logger.Panicf("FATAL: cannot remove %q: %s", deleteFilePath, err)
+	}
 
 	// Sync the directory after the removing deletDirFilename file in order to make sure
 	// all the metadata files are removed at some exotic filesystems such as OSSFS2.
@@ -212,11 +214,8 @@ func tryRemoveDir(dirPath string) bool {
 	MustSyncPath(dirPath)
 
 	// Remove the dirPath itself
-	if err := os.Remove(dirPath); err != nil {
-		if !isTemporaryNFSError(err) {
-			logger.Panicf("FATAL: cannot remove %q: %s", dirPath, err)
-		}
-		return false
+	if err := removePathWithRetry(dirPath); err != nil {
+		logger.Panicf("FATAL: cannot remove %q: %s", dirPath, err)
 	}
 
 	// Do not sync the parent directory for the dirPath - the caller can do this if needed.
@@ -253,6 +252,26 @@ func MustStopDirRemover() {
 	case <-time.After(maxWaitTime):
 		logger.Errorf("cannot stop dirRemover in %s; the remaining partially deleted directories should be automatically removed on the next startup", maxWaitTime)
 	}
+}
+
+// removePathWithRetry removes the given path with retries for temporary NFS errors.
+// It returns nil if the removal succeeded or the path doesn't exist.
+// It returns the last error if all retries are exhausted or a non-temporary error occurs.
+func removePathWithRetry(path string) error {
+	const maxRetries = 10
+	delay := 100 * time.Millisecond
+	for i := 0; i < maxRetries; i++ {
+		err := os.Remove(path)
+		if err == nil || os.IsNotExist(err) {
+			return nil
+		}
+		if !isTemporaryNFSError(err) {
+			return err
+		}
+		time.Sleep(delay)
+		delay *= 2
+	}
+	return os.Remove(path)
 }
 
 func isTemporaryNFSError(err error) bool {
