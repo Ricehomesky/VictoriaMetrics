@@ -36,11 +36,11 @@ jobs:
 
       - name: Build and push Docker image
         run: |
-          cd bin
-          cp ../app/vmstorage/deployment/Dockerfile .
           docker build \
             --no-cache \
+            --build-arg base_image=alpine:latest \
+            --build-arg src_binary=vmstorage-linux-amd64-prod \
             -t ghcr.io/ricehomesky/vmstorage:v1.144.0-cluster-fix \
-            -f Dockerfile \
-            .
+            -f app/vmstorage/deployment/Dockerfile \
+            bin
           docker push ghcr.io/ricehomesky/vmstorage:v1.144.0-cluster-fix
