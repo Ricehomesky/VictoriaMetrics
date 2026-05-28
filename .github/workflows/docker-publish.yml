@@ -40,7 +40,7 @@ jobs:
             --no-cache \
             --build-arg base_image=alpine:latest \
             --build-arg src_binary=vmstorage-linux-amd64-prod \
-            -t ghcr.io/ricehomesky/vmstorage:v1.144.0-cluster-fix \
+            -t ghcr.io/ricehomesky/vmstorage:v1.144.0-cluster \
             -f app/vmstorage/deployment/Dockerfile \
             bin
-          docker push ghcr.io/ricehomesky/vmstorage:v1.144.0-cluster-fix
+          docker push ghcr.io/ricehomesky/vmstorage:v1.144.0-cluster
