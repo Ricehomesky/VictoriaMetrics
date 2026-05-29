@@ -1,4 +1,4 @@
-name: Build and Push VMStorage Image
+name: Build and Push All VM Images
 
 on:
   push:
@@ -24,8 +24,13 @@ jobs:
         with:
           go-version-file: 'go.mod'
 
-      - name: Build vmstorage binary
-        run: make vmstorage-linux-amd64-prod
+      - name: Build all binaries
+        run: |
+          make vmagent-linux-amd64-prod
+          make vmalert-linux-amd64-prod
+          make vminsert-linux-amd64-prod
+          make vmselect-linux-amd64-prod
+          make vmstorage-linux-amd64-prod
 
       - name: Log in to GHCR
         uses: docker/login-action@v3
@@ -34,13 +39,56 @@ jobs:
           username: Ricehomesky
           password: ${{ secrets.GITHUB_TOKEN }}
 
-      - name: Build and push Docker image
+      - name: Build and push vmagent (v1.144.0-rc1)
         run: |
-          docker build \
-            --no-cache \
+          docker build --no-cache \
+            --build-arg base_image=alpine:latest \
+            --build-arg src_binary=vmagent-linux-amd64-prod \
+            -t ghcr.io/ricehomesky/vmagent:v1.144.0-rc1 \
+            -f app/vmagent/deployment/Dockerfile bin
+          docker push ghcr.io/ricehomesky/vmagent:v1.144.0-rc1
+
+      - name: Build and push vmalert (v1.144.0-rc1)
+        run: |
+          docker build --no-cache \
+            --build-arg base_image=alpine:latest \
+            --build-arg src_binary=vmalert-linux-amd64-prod \
+            -t ghcr.io/ricehomesky/vmalert:v1.144.0-rc1 \
+            -f app/vmalert/deployment/Dockerfile bin
+          docker push ghcr.io/ricehomesky/vmalert:v1.144.0-rc1
+
+      - name: Build and push victoria-metrics (v1.144.0-rc1)
+        run: |
+          docker build --no-cache \
             --build-arg base_image=alpine:latest \
             --build-arg src_binary=vmstorage-linux-amd64-prod \
-            -t ghcr.io/ricehomesky/vmstorage:v1.144.0-cluster \
-            -f app/vmstorage/deployment/Dockerfile \
-            bin
-          docker push ghcr.io/ricehomesky/vmstorage:v1.144.0-cluster
+            -t ghcr.io/ricehomesky/victoria-metrics:v1.144.0-rc1 \
+            -f app/vmstorage/deployment/Dockerfile bin
+          docker push ghcr.io/ricehomesky/victoria-metrics:v1.144.0-rc1
+
+      - name: Build and push vminsert (v1.144.0-rc1-cluster)
+        run: |
+          docker build --no-cache \
+            --build-arg base_image=alpine:latest \
+            --build-arg src_binary=vminsert-linux-amd64-prod \
+            -t ghcr.io/ricehomesky/vminsert:v1.144.0-rc1-cluster \
+            -f app/vminsert/deployment/Dockerfile bin
+          docker push ghcr.io/ricehomesky/vminsert:v1.144.0-rc1-cluster
+
+      - name: Build and push vmselect (v1.144.0-rc1-cluster)
+        run: |
+          docker build --no-cache \
+            --build-arg base_image=alpine:latest \
+            --build-arg src_binary=vmselect-linux-amd64-prod \
+            -t ghcr.io/ricehomesky/vmselect:v1.144.0-rc1-cluster \
+            -f app/vmselect/deployment/Dockerfile bin
+          docker push ghcr.io/ricehomesky/vmselect:v1.144.0-rc1-cluster
+
+      - name: Build and push vmstorage (v1.144.0-rc1-cluster)
+        run: |
+          docker build --no-cache \
+            --build-arg base_image=alpine:latest \
+            --build-arg src_binary=vmstorage-linux-amd64-prod \
+            -t ghcr.io/ricehomesky/vmstorage:v1.144.0-rc1-cluster \
+            -f app/vmstorage/deployment/Dockerfile bin
+          docker push ghcr.io/ricehomesky/vmstorage:v1.144.0-rc1-cluster
